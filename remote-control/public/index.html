@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>שלט ביתי</title>
+  <meta name="theme-color" content="#0f1115">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="שלט">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="tv" role="tab">📺 טלוויזיה</button>
+      <button class="tab" data-tab="ac" role="tab">❄️ מזגן</button>
+    </nav>
+  </header>
+
+  <!-- ============ טלוויזיה ============ -->
+  <main id="panel-tv" class="panel active">
+    <div class="statusbar">
+      <span id="tv-status" class="chip chip-off">מנותק</span>
+      <button id="tv-connect" class="link">התחבר / צמד</button>
+    </div>
+
+    <section class="row three">
+      <button class="key danger" data-tv="power" title="הדלקה/כיבוי">⏻</button>
+      <button class="key" data-sheet="inputs">כניסות</button>
+      <button class="key" data-btn="HOME">🏠</button>
+    </section>
+
+    <section class="dpad-wrap">
+      <button class="key side" data-btn="BACK">↩ חזרה</button>
+      <div class="dpad">
+        <button class="key up" data-btn="UP">▲</button>
+        <button class="key left" data-btn="LEFT">◀</button>
+        <button class="key ok" data-btn="ENTER">OK</button>
+        <button class="key right" data-btn="RIGHT">▶</button>
+        <button class="key down" data-btn="DOWN">▼</button>
+      </div>
+      <button class="key side" data-btn="MENU">⚙ תפריט</button>
+    </section>
+
+    <section class="row rockers">
+      <div class="rocker">
+        <button class="key" data-vol="1">+</button>
+        <span class="label">עוצמה<br><b id="tv-vol">–</b></span>
+        <button class="key" data-vol="-1">−</button>
+      </div>
+      <div class="col">
+        <button class="key" data-vol="mute">🔇</button>
+        <button class="key" data-btn="EXIT">יציאה</button>
+        <button class="key" data-btn="INFO">ℹ</button>
+      </div>
+      <div class="rocker">
+        <button class="key" data-ch="1">+</button>
+        <span class="label">ערוץ<br><b id="tv-ch">–</b></span>
+        <button class="key" data-ch="-1">−</button>
+      </div>
+    </section>
+
+    <section class="row media">
+      <button class="key" data-media="rewind">⏪</button>
+      <button class="key" data-media="play">▶</button>
+      <button class="key" data-media="pause">⏸</button>
+      <button class="key" data-media="stop">⏹</button>
+      <button class="key" data-media="fastForward">⏩</button>
+    </section>
+
+    <section class="apps" id="apps"></section>
+
+    <details class="more">
+      <summary>מספרים</summary>
+      <div class="numpad">
+        <button class="key" data-btn="1">1</button><button class="key" data-btn="2">2</button><button class="key" data-btn="3">3</button>
+        <button class="key" data-btn="4">4</button><button class="key" data-btn="5">5</button><button class="key" data-btn="6">6</button>
+        <button class="key" data-btn="7">7</button><button class="key" data-btn="8">8</button><button class="key" data-btn="9">9</button>
+        <button class="key" data-btn="DASH">−</button><button class="key" data-btn="0">0</button><button class="key" data-btn="CC">CC</button>
+      </div>
+    </details>
+
+    <details class="more">
+      <summary>הקלדה בטלוויזיה</summary>
+      <form id="tv-text" class="textrow">
+        <input type="text" placeholder="הקלד טקסט לשדה שפתוח בטלוויזיה" autocomplete="off">
+        <button type="submit" class="key">שלח</button>
+        <button type="button" class="key" id="tv-text-del">⌫</button>
+      </form>
+    </details>
+
+    <details class="more">
+      <summary>משטח מגע (עכבר קסם)</summary>
+      <div id="touchpad" class="touchpad">גרור כאן להזזת הסמן · הקשה = לחיצה · שתי אצבעות = גלילה</div>
+    </details>
+  </main>
+
+  <!-- ============ מזגן ============ -->
+  <main id="panel-ac" class="panel">
+    <div class="statusbar">
+      <span id="ac-label" class="chip">מזגן</span>
+      <span id="ac-room" class="muted"></span>
+    </div>
+
+    <section class="ac-hero">
+      <button id="ac-power" class="power-btn" title="הדלקה/כיבוי">⏻</button>
+      <div class="temp">
+        <button class="key round" data-temp="-1">−</button>
+        <div class="temp-value"><span id="ac-temp">24</span><small>°C</small></div>
+        <button class="key round" data-temp="1">+</button>
+      </div>
+      <div id="ac-state-line" class="muted"></div>
+    </section>
+
+    <section class="group">
+      <div class="group-title">מצב</div>
+      <div class="segmented" id="ac-mode">
+        <button data-mode="cool">❄️ קירור</button>
+        <button data-mode="heat">🔥 חימום</button>
+        <button data-mode="fan">🌀 מאוורר</button>
+        <button data-mode="dry">💧 ייבוש</button>
+        <button data-mode="auto">A אוטו</button>
+      </div>
+    </section>
+
+    <section class="group">
+      <div class="group-title">מאוורר</div>
+      <div class="segmented" id="ac-fan">
+        <button data-fan="auto">אוטו</button>
+        <button data-fan="low">נמוך</button>
+        <button data-fan="medium">בינוני</button>
+        <button data-fan="high">גבוה</button>
+      </div>
+    </section>
+
+    <section class="group row two">
+      <button class="key" id="ac-swing">↕ תנועת תריס</button>
+      <button class="key" data-preset="sleep">🌙 לילה 25° נמוך</button>
+    </section>
+
+    <section class="group" id="ac-learn" hidden>
+      <div class="group-title">קודי IR (Broadlink)</div>
+      <p class="muted small">למזגן IR כל שילוב של מצב+טמפרטורה+מאוורר הוא קוד נפרד. כוון את השלט המקורי אל ה-Broadlink ולחץ על אותו מצב בשלט תוך 30 שניות.</p>
+      <div class="row two">
+        <button class="key" id="ac-learn-current">למד את המצב הנוכחי</button>
+        <button class="key" id="ac-learn-off">למד "כיבוי"</button>
+      </div>
+      <div id="ac-codes" class="codes"></div>
+    </section>
+  </main>
+
+  <!-- גיליון כניסות / אפליקציות -->
+  <div id="sheet" class="sheet" hidden>
+    <div class="sheet-body">
+      <div class="sheet-head"><b id="sheet-title"></b><button class="link" id="sheet-close">סגור</button></div>
+      <div id="sheet-list" class="sheet-list"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>

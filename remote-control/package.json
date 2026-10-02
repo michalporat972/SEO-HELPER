@@ -1,0 +1,22 @@
+{
+  "name": "home-remote",
+  "version": "1.0.0",
+  "description": "שלט ביתי: טלוויזיית LG (webOS) + מזגן, מגיש ממשק מובייל ברשת הביתית",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "node-broadlink": "^2.4.1"
+  },
+  "license": "MIT"
+}
