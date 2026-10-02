@@ -5,7 +5,7 @@
 import express from 'express';
 import path from 'node:path';
 import { BUTTONS } from './lg/webos.js';
-import { MODES, FAN_LEVELS, SWING, TEMP_MIN, TEMP_MAX } from './ac/base.js';
+import { groupByRoom } from './lights/base.js';
 
 // אפליקציות webOS נפוצות (מזהה → שם לתצוגה)
 export const KNOWN_APPS = [
@@ -22,7 +22,7 @@ export const KNOWN_APPS = [
   { id: 'com.webos.app.browser', name: 'דפדפן' },
 ];
 
-export function createApp({ tv, ac, publicDir, tvInfo = {} }) {
+export function createApp({ tv, lights, publicDir, tvInfo = {} }) {
   const app = express();
   app.use(express.json());
   app.use(express.static(publicDir, { extensions: ['html'] }));
@@ -40,12 +40,12 @@ export function createApp({ tv, ac, publicDir, tvInfo = {} }) {
 
   // ---------- סטטוס כללי ----------
   app.get('/api/status', wrap(async () => {
-    let acState = null; let acError = null;
-    try { acState = await ac.getState(); } catch (e) { acError = e.message; }
+    let rooms = []; let lightsError = null;
+    try { rooms = groupByRoom(await lights.list()); } catch (e) { lightsError = e.message; }
     return {
       tv: { status: tv.status, ip: tvInfo.ip || null, canWake: Boolean(tvInfo.mac), paired: Boolean(tv.clientKey) },
-      ac: { adapter: ac.name, label: ac.label, capabilities: ac.capabilities, state: acState, error: acError },
-      meta: { modes: MODES, fanLevels: FAN_LEVELS, swing: SWING, tempMin: TEMP_MIN, tempMax: TEMP_MAX, apps: KNOWN_APPS },
+      lights: { adapter: lights.name, label: lights.label, canPair: Boolean(lights.pair), rooms, error: lightsError },
+      meta: { apps: KNOWN_APPS },
     };
   }));
 
@@ -142,29 +142,34 @@ export function createApp({ tv, ac, publicDir, tvInfo = {} }) {
     return { system: val(system), volume: val(volume), app: val(app), channel: val(channel) };
   }));
 
-  // ---------- מזגן ----------
-  app.get('/api/ac/state', wrap(() => ac.getState()));
-  app.post('/api/ac/state', wrap((req) => ac.setState(req.body || {})));
-  app.post('/api/ac/power', wrap(async (req) => {
-    const cur = await ac.getState();
-    const on = typeof req.body?.on === 'boolean' ? req.body.on : !cur.power;
-    return ac.setState({ power: on });
+  // ---------- אורות ----------
+  app.get('/api/lights', wrap(async () => groupByRoom(await lights.list())));
+  app.post('/api/lights/pair', wrap(async () => {
+    if (!lights.pair) throw bad(`המתאם ${lights.name} לא דורש צימוד`);
+    return lights.pair();
   }));
-  app.post('/api/ac/temperature', wrap(async (req) => {
-    const cur = await ac.getState();
-    const { delta, value } = req.body || {};
-    const target = typeof value === 'number' ? value : cur.targetTemperature + Number(delta || 0);
-    return ac.setState({ targetTemperature: target, power: true });
+  // כל האורות / כל החדר: on חובה; brightness אופציונלי
+  app.post('/api/lights/all', wrap(async (req) => setMany(await lights.list(), req.body)));
+  app.post('/api/lights/room/:room', wrap(async (req) => {
+    const all = await lights.list();
+    const inRoom = all.filter((l) => (l.room || 'אחר') === req.params.room);
+    if (!inRoom.length) throw bad(`אין אורות בחדר "${req.params.room}"`);
+    return setMany(inRoom, req.body);
   }));
-  app.post('/api/ac/learn', wrap(async (req) => {
-    if (!ac.learn) throw bad(`המתאם ${ac.name} לא תומך בלמידת קודים`);
-    return ac.learn(String(req.body?.key || ''));
-  }));
-  app.get('/api/ac/codes', wrap(async () => (ac.getCodes ? ac.getCodes() : [])));
-  app.delete('/api/ac/codes/:key', wrap(async (req) => {
-    if (!ac.deleteCode) throw bad('המתאם לא תומך במחיקת קודים');
-    return ac.deleteCode(req.params.key);
-  }));
+  app.post('/api/lights/:id', wrap(async (req) => lights.set(req.params.id, req.body || {})));
+
+  async function setMany(list, body = {}) {
+    if (typeof body.on !== 'boolean') throw bad('צריך on: true/false');
+    const patch = { on: body.on };
+    if (typeof body.brightness === 'number') patch.brightness = body.brightness;
+    const results = await Promise.allSettled(list.filter((l) => l.reachable !== false).map((l) => {
+      const p = { ...patch };
+      if (p.brightness !== undefined && !l.capabilities?.brightness) delete p.brightness;
+      return lights.set(l.id, p);
+    }));
+    const failed = results.filter((r) => r.status === 'rejected').map((r) => r.reason.message);
+    return { changed: results.length - failed.length, failed };
+  }
 
   // fallback ל-SPA
   app.get(/^\/(?!api).*/, (req, res) => res.sendFile(path.join(publicDir, 'index.html')));

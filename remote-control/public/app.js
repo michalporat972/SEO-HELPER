@@ -2,10 +2,7 @@
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
-let meta = { modes: [], fanLevels: [], apps: [], tempMin: 16, tempMax: 30 };
-let acState = null;
-let acCaps = {};
-let pendingAc = null; // מצב "אופטימי" בזמן שליחה
+let meta = { apps: [] };
 
 // ---------- כלים ----------
 const haptic = () => { try { navigator.vibrate?.(8); } catch {} };
@@ -33,7 +30,7 @@ $$('.tab').forEach((b) => b.addEventListener('click', () => {
   $$('.panel').forEach((p) => p.classList.toggle('active', p.id === `panel-${b.dataset.tab}`));
   localStorage.setItem('tab', b.dataset.tab);
 }));
-if (localStorage.getItem('tab') === 'ac') $('.tab[data-tab="ac"]').click();
+if (localStorage.getItem('tab') === 'lights') $('.tab[data-tab="lights"]').click();
 
 // ---------- טלוויזיה ----------
 const TV_STATUS = { connected: ['מחובר', 'chip-on'], connecting: ['מתחבר…', 'chip-wait'], pairing: ['אשר בטלוויזיה', 'chip-wait'], disconnected: ['מנותק', 'chip-off'] };
@@ -130,67 +127,103 @@ $('[data-sheet="inputs"]').addEventListener('click', safe(async () => {
   pad.addEventListener('wheel', (e) => { e.preventDefault(); api('/api/tv/pointer', { action: 'scroll', dx: 0, dy: -Math.sign(e.deltaY) }).catch(() => {}); }, { passive: false });
 })();
 
-// ---------- מזגן ----------
-const MODE_HE = { cool: 'קירור', heat: 'חימום', fan: 'מאוורר', dry: 'ייבוש', auto: 'אוטומטי' };
-const FAN_HE = { auto: 'אוטו', low: 'נמוך', medium: 'בינוני', high: 'גבוה' };
-function renderAc(ac) {
-  $('#ac-label').textContent = ac.label || 'מזגן';
-  acCaps = ac.capabilities || {};
-  $('#ac-learn').hidden = !acCaps.learn;
-  if (ac.error && !ac.state) { $('#ac-state-line').textContent = ac.error; return; }
-  acState = pendingAc || ac.state;
-  const s = acState;
-  $('#ac-power').classList.toggle('on', s.power);
-  $('#ac-temp').textContent = s.targetTemperature;
-  $$('#ac-mode button').forEach((b) => b.classList.toggle('active', b.dataset.mode === s.mode));
-  $$('#ac-fan button').forEach((b) => b.classList.toggle('active', b.dataset.fan === s.fanLevel));
-  $('#ac-swing').classList.toggle('active', s.swing === 'rangeFull');
-  $('#ac-state-line').textContent = s.power ? `${MODE_HE[s.mode] || s.mode} · מאוורר ${FAN_HE[s.fanLevel] || s.fanLevel}` : 'כבוי';
-  const bits = [];
-  if (typeof s.roomTemperature === 'number') bits.push(`בחדר ${s.roomTemperature.toFixed(1)}°`);
-  if (typeof s.humidity === 'number') bits.push(`לחות ${Math.round(s.humidity)}%`);
-  if (s.room) bits.push(s.room);
-  $('#ac-room').textContent = bits.join(' · ');
-  if (acCaps.learn) {
-    const wrap = $('#ac-codes'); wrap.innerHTML = '';
-    for (const k of s.learnedKeys || []) {
-      const el = document.createElement('span'); el.className = 'code';
-      el.innerHTML = `${k} <button title="מחק">✕</button>`;
-      $('button', el).addEventListener('click', safe(async () => { await api(`/api/ac/codes/${encodeURIComponent(k)}`, undefined, 'DELETE'); refresh(); }));
-      wrap.appendChild(el);
-    }
-    if (!(s.learnedKeys || []).length) wrap.innerHTML = '<span class="muted small">עדיין לא נלמדו קודים</span>';
-  }
-}
-async function setAc(patch) {
-  pendingAc = { ...acState, ...patch };
-  renderAc({ state: pendingAc, capabilities: acCaps, label: $('#ac-label').textContent });
-  try {
-    const s = await api('/api/ac/state', patch);
-    pendingAc = null; acState = s;
-    renderAc({ state: s, capabilities: acCaps, label: $('#ac-label').textContent });
-  } catch (e) { pendingAc = null; refresh(); throw e; }
-}
-$('#ac-power').addEventListener('click', safe(() => setAc({ power: !acState?.power })));
-$$('[data-temp]').forEach((b) => b.addEventListener('click', safe(() => {
-  const t = Math.min(meta.tempMax, Math.max(meta.tempMin, (acState?.targetTemperature ?? 24) + Number(b.dataset.temp)));
-  return setAc({ targetTemperature: t, power: true });
-})));
-$$('#ac-mode button').forEach((b) => b.addEventListener('click', safe(() => setAc({ mode: b.dataset.mode, power: true }))));
-$$('#ac-fan button').forEach((b) => b.addEventListener('click', safe(() => setAc({ fanLevel: b.dataset.fan, power: true }))));
-$('#ac-swing').addEventListener('click', safe(() => setAc({ swing: acState?.swing === 'rangeFull' ? 'stopped' : 'rangeFull' })));
-$('[data-preset="sleep"]').addEventListener('click', safe(() => setAc({ power: true, mode: 'cool', targetTemperature: 25, fanLevel: 'low' })));
+// ---------- אורות ----------
+const COLOR_PRESETS = ['#ffd966', '#ffb366', '#ff6b6b', '#ff7ad9', '#8f7bff', '#5aa9ff', '#5ef0c8', '#ffffff'];
+const ROOM_ICON = { 'סלון': '🛋️', 'מטבח': '🍳', 'חדר שינה': '🛏️', 'מסדרון': '🚪', 'אמבטיה': '🛁', 'חדר ילדים': '🧸', 'משרד': '💻', 'מרפסת': '🌿' };
+const dragging = new Set(); // אורות שהמשתמש גורר כרגע את הבהירות שלהם, לא לדרוס מהפולינג
+let lightEls = new Map();
 
-// למידת קודי IR
-const learn = (key) => safe(async () => {
-  toast(`מצב למידה: כוון את השלט המקורי אל ה-Broadlink ולחץ (${key})`, true);
-  const r = await api('/api/ac/learn', { key });
-  toast(`נשמר קוד "${r.key}"`, true); refresh();
-});
-$('#ac-learn-current').addEventListener('click', () => {
-  const s = acState || {}; learn(`${s.mode}_${s.targetTemperature}_${s.fanLevel}`)();
-});
-$('#ac-learn-off').addEventListener('click', learn('off'));
+function lightGlow(l) {
+  if (l.color) return `rgb(${l.color.r},${l.color.g},${l.color.b})`;
+  return '#ffd966';
+}
+
+function renderLight(l) {
+  let el = lightEls.get(l.id);
+  if (!el) {
+    el = document.createElement('div'); el.className = 'light'; el.dataset.id = l.id;
+    el.innerHTML = `<div class="icon">💡</div><div class="name"><span></span><small></small></div><button class="toggle" aria-label="הדלקה/כיבוי"></button>
+      <input class="slider" type="range" min="1" max="100" step="1" dir="rtl"><div class="colors"></div>`;
+    const toggle = $('.toggle', el);
+    toggle.addEventListener('click', safe(() => setLight(l.id, { on: !toggle.classList.contains('on') })));
+    const slider = $('.slider', el);
+    let t;
+    const send = () => { clearTimeout(t); t = setTimeout(safe(() => setLight(l.id, { brightness: Number(slider.value) })), 120); };
+    slider.addEventListener('pointerdown', () => dragging.add(l.id));
+    slider.addEventListener('input', () => { slider.style.setProperty('--pct', `${slider.value}%`); send(); });
+    slider.addEventListener('change', () => { dragging.delete(l.id); send(); });
+    slider.addEventListener('pointerup', () => dragging.delete(l.id));
+    const colors = $('.colors', el);
+    for (const hex of COLOR_PRESETS) {
+      const b = document.createElement('button'); b.style.background = hex; b.dataset.hex = hex; b.title = hex;
+      b.addEventListener('click', safe(() => setLight(l.id, { color: hex })));
+      colors.appendChild(b);
+    }
+    lightEls.set(l.id, el);
+  }
+  el.classList.toggle('on', l.on);
+  el.classList.toggle('unreachable', l.reachable === false);
+  el.style.setProperty('--glow', lightGlow(l));
+  $('.name span', el).textContent = l.name;
+  $('.name small', el).textContent = l.reachable === false ? (l.error || 'לא זמין') : (l.on && l.brightness != null ? `${l.brightness}%` : (l.on ? 'דולק' : 'כבוי'));
+  $('.toggle', el).classList.toggle('on', l.on);
+  const slider = $('.slider', el);
+  slider.hidden = !l.capabilities?.brightness;
+  if (!dragging.has(l.id) && l.brightness != null) { slider.value = l.brightness; slider.style.setProperty('--pct', `${l.brightness}%`); }
+  const colors = $('.colors', el);
+  colors.hidden = !l.capabilities?.color;
+  if (l.color) {
+    const cur = `#${[l.color.r, l.color.g, l.color.b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+    $$('button', colors).forEach((b) => b.classList.toggle('active', b.dataset.hex === cur));
+  }
+  return el;
+}
+
+function renderLights(st) {
+  $('#lights-label').textContent = st.label || 'אורות';
+  $('#lights-pair').hidden = !st.canPair;
+  const err = $('#lights-error'); err.hidden = !st.error; err.textContent = st.error || '';
+  const wrap = $('#rooms');
+  const seen = new Set();
+  st.rooms.forEach((room, idx) => {
+    let el = $(`.room[data-room="${CSS.escape(room.name)}"]`, wrap);
+    if (!el) {
+      el = document.createElement('section'); el.className = 'room'; el.dataset.room = room.name;
+      el.innerHTML = `<div class="room-head"><h2>${ROOM_ICON[room.name] || '🏠'} ${room.name} <span class="muted"></span></h2>
+        <div class="room-actions"><button data-on="true">הדלק</button><button data-on="false">כבה</button></div></div><div class="room-lights"></div>`;
+      $$('.room-actions button', el).forEach((b) => b.addEventListener('click', safe(async () => {
+        await api(`/api/lights/room/${encodeURIComponent(room.name)}`, { on: b.dataset.on === 'true' }); refresh();
+      })));
+    }
+    const onCount = room.lights.filter((l) => l.on).length;
+    $('.room-head .muted', el).textContent = onCount ? `${onCount}/${room.lights.length} דולקים` : '';
+    const list = $('.room-lights', el);
+    for (const l of room.lights) { seen.add(l.id); list.appendChild(renderLight(l)); }
+    wrap.appendChild(el);
+    if (wrap.children[idx] !== el) wrap.insertBefore(el, wrap.children[idx]);
+  });
+  // מחיקת חדרים/אורות שנעלמו
+  $$('.room', wrap).forEach((el) => { if (!st.rooms.some((r) => r.name === el.dataset.room)) el.remove(); });
+  for (const [id, el] of lightEls) if (!seen.has(id)) { el.remove(); lightEls.delete(id); }
+  if (!st.rooms.length && !st.error) wrap.innerHTML = '<p class="muted">לא נמצאו אורות. בדוק את ההגדרות ב-.env</p>';
+}
+
+async function setLight(id, patch) {
+  const l = await api(`/api/lights/${encodeURIComponent(id)}`, patch);
+  renderLight(l);
+}
+$$('[data-all]').forEach((b) => b.addEventListener('click', safe(async () => {
+  const r = await api('/api/lights/all', { on: b.dataset.all === 'true' });
+  if (r.failed?.length) toast(`${r.failed.length} אורות לא הגיבו`); else toast(b.dataset.all === 'true' ? 'כל האורות דולקים' : 'כל האורות כבויים', true);
+  refresh();
+})));
+$('#lights-pair').addEventListener('click', safe(async () => {
+  toast('לחץ על הכפתור הפיזי בגשר ואז המתן…', true);
+  const r = await api('/api/lights/pair', {});
+  const errs = Object.values(r).filter((x) => x?.error).map((x) => x.error);
+  if (errs.length) throw new Error(errs.join(' | '));
+  toast('הצימוד הצליח', true); refresh();
+}));
 
 // ---------- רענון ----------
 let appsLoaded = false;
@@ -199,7 +232,7 @@ async function refresh() {
     const st = await api('/api/status');
     meta = st.meta;
     renderTv(st.tv);
-    renderAc(st.ac);
+    renderLights(st.lights);
     if (!appsLoaded) { appsLoaded = true; renderApps(meta.apps); }
     if (st.tv.status === 'connected' && !refresh.gotApps) { refresh.gotApps = true; loadApps(); }
   } catch (e) { toast(`אין קשר לשרת: ${e.message}`); }

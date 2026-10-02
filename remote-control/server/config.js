@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = process.env.DATA_DIR || path.join(root, 'data');
+const list = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
 
 export const config = {
   root,
@@ -14,11 +15,10 @@ export const config = {
     mac: process.env.LG_TV_MAC || '',
     keyFile: path.join(dataDir, 'lg-client-key.txt'),
   },
-  ac: {
-    adapter: process.env.AC_ADAPTER || 'mock',
-    stateFile: path.join(dataDir, 'ac-state.json'),
-    sensibo: { apiKey: process.env.SENSIBO_API_KEY || '', deviceId: process.env.SENSIBO_DEVICE_ID || '' },
-    broadlink: { ip: process.env.BROADLINK_IP || '', mac: process.env.BROADLINK_MAC || '', codesFile: path.join(dataDir, 'ac-ir-codes.json') },
-    http: { url: process.env.AC_HTTP_URL || '', method: (process.env.AC_HTTP_METHOD || 'GET').toUpperCase() },
+  lights: {
+    adapters: process.env.LIGHTS_ADAPTERS || 'mock',
+    hue: { bridgeIp: process.env.HUE_BRIDGE_IP || '', username: process.env.HUE_USERNAME || '', userFile: path.join(dataDir, 'hue-username.txt') },
+    shelly: { devices: process.env.SHELLY_DEVICES || '' },
+    ha: { url: process.env.HA_URL || '', token: process.env.HA_TOKEN || '', domains: list(process.env.HA_DOMAINS || 'light'), entities: list(process.env.HA_ENTITIES) },
   },
 };

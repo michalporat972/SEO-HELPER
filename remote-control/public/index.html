@@ -17,7 +17,7 @@
   <header class="top">
     <nav class="tabs" role="tablist">
       <button class="tab active" data-tab="tv" role="tab">📺 טלוויזיה</button>
-      <button class="tab" data-tab="ac" role="tab">❄️ מזגן</button>
+      <button class="tab" data-tab="lights" role="tab">💡 אורות</button>
     </nav>
   </header>
 
@@ -99,58 +99,20 @@
     </details>
   </main>
 
-  <!-- ============ מזגן ============ -->
-  <main id="panel-ac" class="panel">
+  <!-- ============ אורות ============ -->
+  <main id="panel-lights" class="panel">
     <div class="statusbar">
-      <span id="ac-label" class="chip">מזגן</span>
-      <span id="ac-room" class="muted"></span>
+      <span id="lights-label" class="chip">אורות</span>
+      <button id="lights-pair" class="link" hidden>צמד עם הגשר</button>
     </div>
 
-    <section class="ac-hero">
-      <button id="ac-power" class="power-btn" title="הדלקה/כיבוי">⏻</button>
-      <div class="temp">
-        <button class="key round" data-temp="-1">−</button>
-        <div class="temp-value"><span id="ac-temp">24</span><small>°C</small></div>
-        <button class="key round" data-temp="1">+</button>
-      </div>
-      <div id="ac-state-line" class="muted"></div>
+    <section class="row two">
+      <button class="key" data-all="true">💡 הכל דולק</button>
+      <button class="key" data-all="false">🌑 הכל כבוי</button>
     </section>
 
-    <section class="group">
-      <div class="group-title">מצב</div>
-      <div class="segmented" id="ac-mode">
-        <button data-mode="cool">❄️ קירור</button>
-        <button data-mode="heat">🔥 חימום</button>
-        <button data-mode="fan">🌀 מאוורר</button>
-        <button data-mode="dry">💧 ייבוש</button>
-        <button data-mode="auto">A אוטו</button>
-      </div>
-    </section>
-
-    <section class="group">
-      <div class="group-title">מאוורר</div>
-      <div class="segmented" id="ac-fan">
-        <button data-fan="auto">אוטו</button>
-        <button data-fan="low">נמוך</button>
-        <button data-fan="medium">בינוני</button>
-        <button data-fan="high">גבוה</button>
-      </div>
-    </section>
-
-    <section class="group row two">
-      <button class="key" id="ac-swing">↕ תנועת תריס</button>
-      <button class="key" data-preset="sleep">🌙 לילה 25° נמוך</button>
-    </section>
-
-    <section class="group" id="ac-learn" hidden>
-      <div class="group-title">קודי IR (Broadlink)</div>
-      <p class="muted small">למזגן IR כל שילוב של מצב+טמפרטורה+מאוורר הוא קוד נפרד. כוון את השלט המקורי אל ה-Broadlink ולחץ על אותו מצב בשלט תוך 30 שניות.</p>
-      <div class="row two">
-        <button class="key" id="ac-learn-current">למד את המצב הנוכחי</button>
-        <button class="key" id="ac-learn-off">למד "כיבוי"</button>
-      </div>
-      <div id="ac-codes" class="codes"></div>
-    </section>
+    <div id="rooms"></div>
+    <p id="lights-error" class="muted small" hidden></p>
   </main>
 
   <!-- גיליון כניסות / אפליקציות -->

@@ -1,6 +1,6 @@
-# שלט ביתי: טלוויזיית LG + מזגן
+# שלט ביתי: טלוויזיית LG + אורות
 
-אפליקציית שלט שרצה מהטלפון (או מכל דפדפן) ושולטת בטלוויזיית LG (webOS) ובמזגן דרך הרשת הביתית.
+אפליקציית שלט שרצה מהטלפון (או מכל דפדפן) ושולטת בטלוויזיית LG (webOS) ובאורות הבית דרך הרשת הביתית.
 
 **איך זה בנוי בגדול**
 
@@ -10,7 +10,7 @@
         ▼
 🖥️ שרת Node.js קטן (רץ על מחשב / Raspberry Pi / NAS בבית)
         ├── 📺 LG webOS  — WebSocket ישיר לטלוויזיה (פורט 3000/3001) + Wake-on-LAN להדלקה
-        └── ❄️ מזגן     — דרך אחד מהמתאמים: Sensibo | Broadlink RM | גשר HTTP | mock
+        └── 💡 אורות    — דרך מתאם אחד או יותר: Philips Hue | Shelly | Home Assistant | mock
 ```
 
 למה צריך שרת ולא רק דף אינטרנט? דפדפן לא יכול לדבר ישירות עם הטלוויזיה (פרוטוקול WebSocket לא מאובטח ברשת פרטית) ולא לשלוח Wake-on-LAN. השרת הוא גשר קטן שרץ 24/7 בבית.
@@ -65,44 +65,47 @@ LG_TV_MAC=AA:BB:CC:DD:EE:FF
 
 ---
 
-## ❄️ מזגן
+## 💡 אורות
 
-יש ארבעה מתאמים. בחר אחד ב-`AC_ADAPTER`.
+אין פרוטוקול אחד לאורות חכמים, לכן יש מתאמים. אפשר להפעיל כמה במקביל: `LIGHTS_ADAPTERS=hue,shelly`.
 
-### 1. Sensibo (מומלץ, הכי פשוט)
-אם יש לך Sensibo על המזגן:
-1. היכנס ל-https://home.sensibo.com/me/api וצור מפתח API.
-2. ב-.env:
-   ```
-   AC_ADAPTER=sensibo
-   SENSIBO_API_KEY=xxxx
-   ```
-השרת יבחר את המכשיר הראשון בחשבון. יש כמה? קבע `SENSIBO_DEVICE_ID`. מקבלים גם טמפרטורת חדר ולחות.
+| מתאם | מתי מתאים | חדרים | בהירות / צבע |
+|---|---|---|---|
+| **Philips Hue** | יש גשר Hue בבית | נלקחים אוטומטית מאפליקציית Hue | כן / כן |
+| **Shelly** | מודולים מאחורי המפסק (Shelly 1, 2.5, Plus, Dimmer) | מגדירים ב-.env | דימר: כן / לא |
+| **Home Assistant** | כבר יש לך HA עם Tuya, Switcher, Sonoff, Zigbee וכו' | נגזר מהמילה הראשונה בשם | לפי יכולת האור |
+| **mock** | ברירת מחדל, לבדיקת הממשק בלי חומרה | | |
 
-### 2. Broadlink RM Mini / RM4 (שלט IR ברשת, ~80 ₪)
-מתאים לכל מזגן עם שלט IR. המכשיר "לומד" את השלט המקורי.
+### Philips Hue
 ```
-AC_ADAPTER=broadlink
-BROADLINK_IP=192.168.1.60
+LIGHTS_ADAPTERS=hue
+HUE_BRIDGE_IP=192.168.1.40
 ```
-**לימוד קודים**: במזגן IR כל שילוב של מצב + טמפרטורה + מאוורר הוא קוד אחד. בממשק:
-1. בחר מצב/טמפרטורה/מאוורר (למשל קירור, 24, אוטו).
-2. לחץ "למד את המצב הנוכחי", כוון את השלט המקורי אל ה-Broadlink ולחץ עליו את אותו מצב.
-3. לחץ "למד כיבוי" ולחץ כיבוי בשלט המקורי.
+כתובת הגשר: באפליקציית Hue → הגדרות → גשרים → i, או https://discovery.meethue.com.
+צימוד חד-פעמי: לחץ על הכפתור הפיזי בגשר, ואז בממשק על "צמד עם הגשר" (תוך 30 שניות). נשמר ב-`data/hue-username.txt`.
 
-בפועל רוב האנשים משתמשים ב-3 עד 5 שילובים. אם אין קוד מדויק, השרת נופל חזרה לקוד הקרוב (`cool_24` ואז `cool`). הקודים נשמרים ב-`data/ac-ir-codes.json`.
-
-### 3. גשר HTTP כללי
-יש לך ESPHome / Tasmota / ESP8266 עם IRremoteESP8266, או Switcher Breeze דרך גשר? כל דבר שמקבל HTTP:
+### Shelly
 ```
-AC_ADAPTER=http
-AC_HTTP_URL=http://192.168.1.70/ac?cmd={cmd}&temp={temp}&mode={mode}
-# או AC_HTTP_METHOD=POST ואז המצב נשלח כ-JSON בגוף הבקשה
+LIGHTS_ADAPTERS=shelly
+SHELLY_DEVICES=192.168.1.80|סלון,192.168.1.81|מטבח:אי
 ```
-משתנים זמינים: `{cmd}` (למשל `cool_24_auto` / `off`), `{power}`, `{mode}`, `{temp}`, `{fan}`, `{swing}`, `{state}`.
+לכל מכשיר: `ip|חדר` או `ip|חדר:שם`. בלי שם, נלקח השם שהוגדר במכשיר. דור 1 ודור 2+ מזוהים אוטומטית, מכשיר עם כמה ערוצים (Shelly 2.5) מופיע כמה אורות. מומלץ לקבע IP בראוטר.
 
-### 4. mock (ברירת מחדל)
-מזגן דמה בזיכרון. נועד לראות שהממשק עובד לפני שמחברים חומרה.
+### Home Assistant
+```
+LIGHTS_ADAPTERS=ha
+HA_URL=http://homeassistant.local:8123
+HA_TOKEN=eyJ...
+HA_DOMAINS=light,switch        # ברירת מחדל: light בלבד
+HA_ENTITIES=light.salon,switch.boiler   # אופציונלי: רק אלה, בסדר הזה
+```
+טוקן: בפרופיל שלך ב-HA → אבטחה → Long-Lived Access Tokens → צור. זה המתאם ה"אוניברסלי": כל מה שכבר מחובר ל-HA מופיע כאן בלי עבודה נוספת.
+
+### מה יש בממשק
+- "הכל דולק" / "הכל כבוי".
+- כל חדר: כפתורי הדלק/כבה לחדר, ורשימת האורות שלו.
+- לכל אור: מתג, סליידר בהירות (אם האור תומך), 8 צבעים מוכנים (אם האור צבעוני). האייקון זוהר בצבע הנוכחי.
+- אור שלא מגיב מופיע מעומעם עם סיבת השגיאה, ולא מפיל את שאר הרשימה.
 
 ---
 
@@ -110,7 +113,7 @@ AC_HTTP_URL=http://192.168.1.70/ac?cmd={cmd}&temp={temp}&mode={mode}
 
 | Method | Path | גוף | תיאור |
 |---|---|---|---|
-| GET | `/api/status` | | מצב טלוויזיה + מזגן |
+| GET | `/api/status` | | מצב טלוויזיה + אורות |
 | POST | `/api/tv/power` | `{on: true/false}` או ריק (toggle) | הדלקה/כיבוי |
 | POST | `/api/tv/button` | `{name: "UP"}` | כל כפתור שלט |
 | POST | `/api/tv/volume` | `{delta: 1}` / `{value: 20}` / `{mute: true}` | עוצמה |
@@ -120,11 +123,13 @@ AC_HTTP_URL=http://192.168.1.70/ac?cmd={cmd}&temp={temp}&mode={mode}
 | GET/POST | `/api/tv/inputs` / `/api/tv/input` | `{id}` | כניסות |
 | POST | `/api/tv/text` | `{text, enter}` | הקלדה |
 | POST | `/api/tv/command` | `{uri: "ssap://...", payload}` | כל פקודת webOS |
-| GET/POST | `/api/ac/state` | `{power, mode, targetTemperature, fanLevel, swing}` | מצב המזגן |
-| POST | `/api/ac/temperature` | `{delta: 1}` / `{value: 23}` | טמפרטורה |
-| POST | `/api/ac/learn` | `{key: "cool_24_auto"}` | למידת קוד IR (Broadlink) |
+| GET | `/api/lights` | | כל האורות מקובצים לחדרים |
+| POST | `/api/lights/:id` | `{on, brightness, color}` | אור בודד. `color` = `"#ff8800"` או `{r,g,b}` |
+| POST | `/api/lights/room/:room` | `{on, brightness?}` | כל אורות החדר |
+| POST | `/api/lights/all` | `{on, brightness?}` | כל האורות |
+| POST | `/api/lights/pair` | | צימוד לגשר Hue |
 
-דוגמה ל-Siri Shortcut: "Get Contents of URL" → POST `http://192.168.1.20:8484/api/ac/state` עם `{"power":true,"mode":"cool","targetTemperature":23}`.
+דוגמה ל-Siri Shortcut "לילה טוב": "Get Contents of URL" → POST `http://192.168.1.20:8484/api/lights/all` עם `{"on":false}`, ועוד אחד ל-`/api/tv/power` עם `{"on":false}`.
 
 ---
 
@@ -140,14 +145,14 @@ pm2 save && pm2 startup   # יוצר שירות שעולה עם המחשב
 ```bash
 npm test
 ```
-הבדיקות מריצות טלוויזיית LG מזויפת (פרוטוקול SSAP מלא כולל חלון צימוד) ומתאמי מזגן עם HTTP מזויף, כך שאפשר לפתח בלי חומרה.
+הבדיקות מריצות טלוויזיית LG מזויפת (פרוטוקול SSAP מלא כולל חלון צימוד) ומתאמי אורות (Hue, Shelly, Home Assistant) מול HTTP מזויף, כך שאפשר לפתח בלי חומרה.
 
 ## מבנה הקוד
 ```
 server/index.js      נקודת כניסה
 server/app.js        ה-API (Express)
 server/lg/webos.js   לקוח webOS: צימוד, פקודות, pointer socket, Wake-on-LAN
-server/ac/*.js       מתאמי מזגן: base (מודל אחיד), sensibo, broadlink, http, mock
+server/lights/*.js   מתאמי אורות: base (מודל אחיד + שילוב מתאמים), hue, shelly, homeassistant, mock
 public/              הממשק (HTML/CSS/JS, בלי framework, RTL, PWA)
 test/                בדיקות + טלוויזיה מזויפת
 ```

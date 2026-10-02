@@ -55,23 +55,35 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; user-select:
 .textrow input { flex: 1; background: var(--key); border: 0; border-radius: 12px; color: var(--text); padding: 12px; font: inherit; min-width: 0; }
 .textrow .key { min-height: 44px; padding: 0 14px; font-size: 15px; }
 .touchpad { height: 200px; margin-bottom: 12px; border-radius: 14px; background: var(--key); border: 1px dashed #3a4256; display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 13px; padding: 14px; touch-action: none; }
-/* ---- מזגן ---- */
-.ac-hero { background: var(--panel); border-radius: 24px; padding: 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.power-btn { width: 72px; height: 72px; border-radius: 50%; background: var(--key); font-size: 30px; color: var(--muted); border: 2px solid transparent; transition: all .15s; }
-.power-btn.on { color: var(--ok); border-color: var(--ok); box-shadow: 0 0 24px rgba(58,210,159,.25); }
-.temp { display: flex; align-items: center; gap: 22px; direction: ltr; }
-.temp-value { font-size: 64px; font-weight: 700; line-height: 1; min-width: 120px; text-align: center; direction: ltr; }
-.temp-value small { font-size: 22px; color: var(--muted); margin-left: 4px; }
-.group { background: var(--panel); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-.group.row { display: grid; }
-.group-title { font-size: 13px; color: var(--muted); font-weight: 600; }
-.segmented { display: flex; gap: 6px; }
-.segmented button { flex: 1; background: var(--key); border-radius: 12px; padding: 12px 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
-.segmented button.active { background: var(--accent); color: #0b0d12; }
-#ac-swing.active { background: var(--accent); color: #0b0d12; }
-.codes { display: flex; flex-wrap: wrap; gap: 6px; }
-.codes .code { background: var(--key); border-radius: 999px; padding: 4px 10px; font-size: 12px; direction: ltr; display: flex; gap: 6px; align-items: center; }
-.codes .code button { background: none; color: var(--danger); padding: 0 2px; }
+/* ---- אורות ---- */
+#rooms { display: flex; flex-direction: column; gap: 12px; }
+.room { background: var(--panel); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.room-head { display: flex; justify-content: space-between; align-items: center; }
+.room-head h2 { margin: 0; font-size: 16px; }
+.room-head .muted { font-size: 12px; }
+.room-actions { display: flex; gap: 6px; }
+.room-actions button { background: var(--key); border-radius: 10px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+.light { background: var(--key); border-radius: 14px; padding: 10px 12px; display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "icon name toggle" "slider slider slider" "colors colors colors"; gap: 6px 10px; align-items: center; transition: background .15s; }
+.light.on { background: #2a3042; }
+.light.unreachable { opacity: .45; }
+.light .icon { grid-area: icon; width: 36px; height: 36px; border-radius: 50%; background: var(--key-hi); display: grid; place-items: center; font-size: 18px; transition: background .2s, box-shadow .2s; }
+.light.on .icon { background: var(--glow, #ffd966); color: #0b0d12; box-shadow: 0 0 18px var(--glow, #ffd966); }
+.light .name { grid-area: name; font-weight: 600; font-size: 15px; display: flex; flex-direction: column; }
+.light .name small { color: var(--muted); font-weight: 400; font-size: 12px; }
+.toggle { grid-area: toggle; width: 52px; height: 30px; border-radius: 999px; background: #3a4256; position: relative; transition: background .2s; }
+.toggle::after { content: ""; position: absolute; top: 3px; inset-inline-start: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.toggle.on { background: var(--ok); }
+.toggle.on::after { transform: translateX(-22px); }
+.light .slider { grid-area: slider; width: 100%; -webkit-appearance: none; appearance: none; height: 28px; background: transparent; margin: 0; }
+.light .slider::-webkit-slider-runnable-track { height: 10px; border-radius: 999px; background: linear-gradient(to left, var(--accent) var(--pct, 50%), #3a4256 var(--pct, 50%)); }
+.light .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; margin-top: -8px; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+.light .slider::-moz-range-track { height: 10px; border-radius: 999px; background: #3a4256; }
+.light .slider::-moz-range-progress { height: 10px; border-radius: 999px; background: var(--accent); }
+.light .slider::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 0; }
+.light[hidden-slider] .slider { display: none; }
+.light .colors { grid-area: colors; display: flex; gap: 8px; flex-wrap: wrap; }
+.light .colors button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; }
+.light .colors button.active { border-color: #fff; }
 /* ---- גיליון ---- */
 .sheet { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 10; display: flex; align-items: flex-end; }
 .sheet[hidden] { display: none; }
